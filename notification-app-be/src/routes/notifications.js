@@ -42,7 +42,7 @@ router.get("/", async (req, res) => {
       logger.Log(
         "backend",
         "info",
-        "notificationRoute",
+        "route",
         `Fetching notifications: page=${page}, type=${type || "All"}`
       );
     }
@@ -63,7 +63,7 @@ router.get("/", async (req, res) => {
         logger.Log(
           "backend",
           "error",
-          "notificationRoute",
+          "route",
           `Evaluation server responded with ${response.status}: ${errorText}`
         );
       }
@@ -80,7 +80,7 @@ router.get("/", async (req, res) => {
       logger.Log(
         "backend",
         "info",
-        "notificationRoute",
+        "route",
         `Successfully fetched ${data.notifications?.length || 0} notifications (page ${page})`
       );
     }
@@ -91,7 +91,7 @@ router.get("/", async (req, res) => {
       logger.Log(
         "backend",
         "error",
-        "notificationRoute",
+        "route",
         `Failed to fetch notifications: ${error.message}`
       );
     }

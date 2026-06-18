@@ -24,17 +24,41 @@ const LOG_API_URL = "http://4.224.186.213/evaluation-service/logs";
 export function createLogger(config = {}) {
   const { token, apiUrl = LOG_API_URL } = config;
 
+  // Recognized package names accepted by the evaluation server API
+  const VALID_PACKAGES = [
+    "handler", "db", "middleware", "route",
+    "auth", "service", "controller", "config",
+  ];
+
   /**
    * Log - Sends a structured log entry to the test server.
    *
    * @param {string} stack - The application stack (e.g., 'backend', 'frontend', 'database')
    * @param {string} level - Log severity level (e.g., 'info', 'warn', 'error', 'fatal', 'debug')
-   * @param {string} pkg - The package/module name where the log originates (e.g., 'authService', 'notificationRoute')
-   * @param {string} message - Descriptive log message with context about what happened
+   * @param {string} pkg - The package/module name (valid: handler, db, middleware, route, auth, service, controller, config)
+   * @param {string} message - Descriptive log message (minimum 5 characters)
    * @returns {Promise<Object|null>} Server response or null on failure
    */
   async function Log(stack, level, pkg, message) {
     try {
+      // Validate package name against recognized values
+      if (!VALID_PACKAGES.includes(pkg)) {
+        console.warn(
+          `[LoggingMiddleware] Invalid package "${pkg}". Valid: ${VALID_PACKAGES.join(", ")}. Defaulting to "service".`
+        );
+        pkg = "service";
+      }
+
+      // Ensure message meets minimum length requirement (5 characters)
+      if (!message || message.length < 5) {
+        message = message ? `Log: ${message}` : "Log entry recorded";
+      }
+
+      // Truncate message to maximum 48 characters (API limit)
+      if (message.length > 48) {
+        message = message.substring(0, 48);
+      }
+
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
@@ -51,8 +75,9 @@ export function createLogger(config = {}) {
 
       if (!response.ok) {
         // Log failure silently to avoid breaking the application
+        const errorBody = await response.text().catch(() => "");
         console.error(
-          `[LoggingMiddleware] Failed to send log: ${response.status} ${response.statusText}`
+          `[LoggingMiddleware] Failed to send log: ${response.status} ${response.statusText} ${errorBody}`
         );
         return null;
       }

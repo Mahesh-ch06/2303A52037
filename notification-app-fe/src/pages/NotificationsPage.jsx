@@ -1,117 +1,345 @@
 /**
- * NotificationsPage
+ * NotificationsPage — Main page layout.
  *
- * Main page component that displays a list of notifications
- * with filtering by type and pagination support.
- *
- * Bugs fixed from skeleton:
- *  1. page state was "1" (string) → changed to 1 (number)
- *  2. Loading spinner used hardcoded `true` → now uses `loading` variable
- *  3. Empty state checked `loading` instead of `!loading`
- *  4. Notification list checked `loading` instead of `!loading`
- *  5. Notifications rendered empty fragments → now renders NotificationCard
- *  6. unreadCount was hardcoded to 2 → now computed from hook
- *  7. handleFilterChange and handlePageChange were empty → now implemented
+ * Header with title, theme toggle, and "mark all read" action.
+ * Stats row showing unread count per type.
+ * Filters, notification list, and pagination.
  */
-
-import { useState } from "react";
-import {
-  Alert,
-  Badge,
-  Box,
-  CircularProgress,
-  Divider,
-  Pagination,
-  Stack,
-  Typography,
-} from "@mui/material";
-import NotificationsIcon from "@mui/icons-material/Notifications";
-
+import { useState, useMemo } from "react";
 import { NotificationCard } from "../components/NotificationCard";
 import { NotificationFilter } from "../components/NotificationFilter";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { useNotifications } from "../hooks/useNotifications";
 
-export function NotificationsPage() {
+export function NotificationsPage({ isDark, onToggleTheme }) {
   const [filter, setFilter] = useState("All");
   const [page, setPage] = useState(1);
 
-  const { notifications, totalPages, loading, error, unreadCount } =
-    useNotifications(page, filter);
+  const {
+    notifications,
+    totalPages,
+    loading,
+    error,
+    unreadCount,
+    markAllRead,
+    toggleRead,
+    deleteNotification,
+  } = useNotifications(page, filter);
 
-  const handleFilterChange = (event, newFilter) => {
-    if (newFilter !== null) {
-      setFilter(newFilter);
-      setPage(1); // Reset to first page when filter changes
-    }
+  // Filter change resets page
+  const handleFilterChange = (key) => {
+    setFilter(key);
+    setPage(1);
   };
 
-  const handlePageChange = (_, newPage) => {
-    setPage(newPage);
-  };
+  // Stats per type
+  const stats = useMemo(() => {
+    const counts = { Placement: 0, Result: 0, Event: 0 };
+    notifications.forEach((n) => {
+      if (counts[n.Type] !== undefined) counts[n.Type]++;
+    });
+    return counts;
+  }, [notifications]);
 
   return (
-    <Box sx={{ maxWidth: 720, mx: "auto", px: 2, py: 4 }}>
-      <Stack direction="row" alignItems="center" spacing={1.5} mb={3}>
-        <Badge badgeContent={unreadCount} color="primary" max={99}>
-          <NotificationsIcon sx={{ fontSize: 28 }} />
-        </Badge>
-        <Typography variant="h5" fontWeight={700}>
-          Notifications
-        </Typography>
-      </Stack>
+    <div style={{ maxWidth: 640, margin: "0 auto", padding: "32px 16px 64px" }}>
 
-      <Divider sx={{ mb: 3 }} />
+      {/* ── Header ── */}
+      <header
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          marginBottom: 28,
+        }}
+      >
+        <div>
+          <h1
+            style={{
+              fontSize: 22,
+              fontWeight: 700,
+              letterSpacing: "-.02em",
+              color: "var(--c-text-1)",
+              margin: 0,
+              lineHeight: 1.3,
+            }}
+          >
+            Notifications
+          </h1>
+          <p
+            style={{
+              fontSize: 13,
+              color: "var(--c-text-3)",
+              marginTop: 2,
+            }}
+          >
+            {unreadCount > 0
+              ? `${unreadCount} unread notification${unreadCount !== 1 ? "s" : ""}`
+              : "You're all caught up"}
+          </p>
+        </div>
 
-      <Box sx={{ marginBottom: 3 }}>
-        <NotificationFilter value={filter} onChange={handleFilterChange} />
-      </Box>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {unreadCount > 0 && (
+            <button
+              id="mark-all-read-btn"
+              onClick={markAllRead}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 500,
+                border: "1px solid var(--c-border)",
+                background: "var(--c-surface)",
+                color: "var(--c-text-2)",
+                transition: "all .15s ease",
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--c-accent)";
+                e.currentTarget.style.color = "var(--c-accent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--c-border)";
+                e.currentTarget.style.color = "var(--c-text-2)";
+              }}
+            >
+              Mark all read
+            </button>
+          )}
+          <ThemeToggle isDark={isDark} onToggle={onToggleTheme} />
+        </div>
+      </header>
 
-      {/* Loading state */}
-      {loading && (
-        <Box display="flex" justifyContent="center" py={6}>
-          <CircularProgress />
-        </Box>
-      )}
-
-      {/* Error state */}
-      {!loading && error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          Failed to load notifications: {error}
-        </Alert>
-      )}
-
-      {/* Empty state */}
-      {!loading && !error && notifications.length === 0 && (
-        <Alert severity="info">
-          No notifications found
-          {filter !== "All" ? ` for type "${filter}"` : ""}.
-        </Alert>
-      )}
-
-      {/* Notifications list */}
+      {/* ── Stats Row ── */}
       {!loading && !error && notifications.length > 0 && (
-        <Stack spacing={1.5}>
-          {notifications.map((n, index) => (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: 8,
+            marginBottom: 20,
+          }}
+        >
+          <StatCard
+            label="Placements"
+            count={stats.Placement}
+            color="var(--c-placement)"
+            bg="var(--c-placement-bg)"
+          />
+          <StatCard
+            label="Results"
+            count={stats.Result}
+            color="var(--c-result)"
+            bg="var(--c-result-bg)"
+          />
+          <StatCard
+            label="Events"
+            count={stats.Event}
+            color="var(--c-event)"
+            bg="var(--c-event-bg)"
+          />
+        </div>
+      )}
+
+      {/* ── Filters ── */}
+      <div style={{ marginBottom: 16 }}>
+        <NotificationFilter value={filter} onChange={handleFilterChange} />
+      </div>
+
+      {/* ── Separator ── */}
+      <div
+        style={{
+          height: 1,
+          background: "var(--c-border)",
+          marginBottom: 16,
+        }}
+      />
+
+      {/* ── Loading ── */}
+      {loading && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonCard key={i} delay={i * 60} />
+          ))}
+        </div>
+      )}
+
+      {/* ── Error ── */}
+      {!loading && error && (
+        <div
+          style={{
+            padding: "14px 16px",
+            borderRadius: "var(--radius)",
+            border: "1px solid var(--c-danger)",
+            background: "var(--c-danger-bg)",
+            color: "var(--c-danger)",
+            fontSize: 13,
+            fontWeight: 500,
+          }}
+        >
+          Failed to load notifications — {error}
+        </div>
+      )}
+
+      {/* ── Empty state ── */}
+      {!loading && !error && notifications.length === 0 && (
+        <div
+          style={{
+            textAlign: "center",
+            padding: "48px 16px",
+            color: "var(--c-text-3)",
+          }}
+        >
+          <div style={{ fontSize: 36, marginBottom: 12 }}>📭</div>
+          <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 4, color: "var(--c-text-2)" }}>
+            No notifications
+          </p>
+          <p style={{ fontSize: 13 }}>
+            {filter !== "All"
+              ? `Nothing in "${filter}" — try a different filter.`
+              : "Check back later for updates."}
+          </p>
+        </div>
+      )}
+
+      {/* ── Notification List ── */}
+      {!loading && !error && notifications.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {notifications.map((n) => (
             <NotificationCard
-              key={n.id || index}
+              key={n.ID}
               notification={n}
+              onToggleRead={toggleRead}
+              onDelete={deleteNotification}
             />
           ))}
-        </Stack>
+        </div>
       )}
 
-      {/* Pagination */}
+      {/* ── Pagination ── */}
       {!loading && totalPages > 1 && (
-        <Box display="flex" justifyContent="center" mt={4}>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={handlePageChange}
-            color="primary"
-            shape="rounded"
-          />
-        </Box>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 4,
+            marginTop: 24,
+          }}
+        >
+          <PaginationBtn
+            disabled={page === 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            ← Prev
+          </PaginationBtn>
+
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <PaginationBtn
+              key={p}
+              active={p === page}
+              onClick={() => setPage(p)}
+            >
+              {p}
+            </PaginationBtn>
+          ))}
+
+          <PaginationBtn
+            disabled={page === totalPages}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next →
+          </PaginationBtn>
+        </div>
       )}
-    </Box>
+    </div>
+  );
+}
+
+/* ── Stat Card ── */
+function StatCard({ label, count, color, bg }) {
+  return (
+    <div
+      style={{
+        padding: "10px 12px",
+        borderRadius: "var(--radius)",
+        border: "1px solid var(--c-border)",
+        background: "var(--c-surface)",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        transition: "box-shadow .15s ease",
+      }}
+    >
+      <span
+        style={{
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          background: bg,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 15,
+          fontWeight: 700,
+          color: color,
+          flexShrink: 0,
+        }}
+      >
+        {count}
+      </span>
+      <span
+        style={{
+          fontSize: 12,
+          fontWeight: 500,
+          color: "var(--c-text-2)",
+          lineHeight: 1.3,
+        }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+/* ── Pagination Button ── */
+function PaginationBtn({ children, active, disabled, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        padding: "6px 12px",
+        borderRadius: 6,
+        fontSize: 13,
+        fontWeight: 500,
+        border: active ? "1px solid var(--c-accent)" : "1px solid var(--c-border)",
+        background: active ? "var(--c-accent-subtle)" : "var(--c-surface)",
+        color: active ? "var(--c-accent)" : disabled ? "var(--c-text-3)" : "var(--c-text-2)",
+        cursor: disabled ? "default" : "pointer",
+        opacity: disabled ? 0.5 : 1,
+        transition: "all .12s ease",
+        fontFamily: "inherit",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+/* ── Skeleton Loading Card ── */
+function SkeletonCard({ delay = 0 }) {
+  return (
+    <div
+      style={{
+        height: 56,
+        borderRadius: "var(--radius)",
+        background: "var(--c-surface-sunken)",
+        border: "1px solid var(--c-border-subtle)",
+        animation: `skeletonPulse 1.6s ease-in-out infinite`,
+        animationDelay: `${delay}ms`,
+      }}
+    />
   );
 }

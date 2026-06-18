@@ -1,51 +1,86 @@
-/* Base styles and CSS reset */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-*,
-*::before,
-*::after {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* ── Design Tokens ── */
+:root {
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --c-bg: #fafafa;
+  --c-surface: #ffffff;
+  --c-surface-raised: #ffffff;
+  --c-surface-sunken: #f4f4f5;
+  --c-border: #e4e4e7;
+  --c-border-subtle: #f0f0f2;
+  --c-text-1: #18181b;
+  --c-text-2: #52525b;
+  --c-text-3: #a1a1aa;
+  --c-accent: #4f46e5;
+  --c-accent-hover: #4338ca;
+  --c-accent-subtle: #eef2ff;
+  --c-placement: #2563eb;
+  --c-placement-bg: #eff6ff;
+  --c-result: #059669;
+  --c-result-bg: #ecfdf5;
+  --c-event: #d97706;
+  --c-event-bg: #fffbeb;
+  --c-danger: #dc2626;
+  --c-danger-bg: #fef2f2;
+  --shadow-xs: 0 1px 2px rgba(0,0,0,.05);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 6px rgba(0,0,0,.04), 0 2px 4px rgba(0,0,0,.03);
+  --radius: 8px;
+  --radius-lg: 12px;
 }
 
-html {
-  font-size: 16px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+[data-theme="dark"] {
+  --c-bg: #09090b;
+  --c-surface: #18181b;
+  --c-surface-raised: #1f1f23;
+  --c-surface-sunken: #111113;
+  --c-border: #27272a;
+  --c-border-subtle: #1e1e21;
+  --c-text-1: #fafafa;
+  --c-text-2: #a1a1aa;
+  --c-text-3: #52525b;
+  --c-accent: #6366f1;
+  --c-accent-hover: #818cf8;
+  --c-accent-subtle: rgba(99,102,241,.12);
+  --c-placement: #60a5fa;
+  --c-placement-bg: rgba(37,99,235,.1);
+  --c-result: #34d399;
+  --c-result-bg: rgba(5,150,105,.1);
+  --c-event: #fbbf24;
+  --c-event-bg: rgba(217,119,6,.1);
+  --c-danger: #f87171;
+  --c-danger-bg: rgba(220,38,38,.1);
+  --shadow-xs: 0 1px 2px rgba(0,0,0,.2);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.3);
+  --shadow-md: 0 4px 6px rgba(0,0,0,.2);
 }
+
+/* ── Reset ── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { -webkit-font-smoothing: antialiased; }
 
 body {
-  font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif;
-  background-color: #f5f7fa;
-  color: #1a1a2e;
-  line-height: 1.6;
-  min-height: 100vh;
+  font-family: var(--font);
+  background: var(--c-bg);
+  color: var(--c-text-1);
+  line-height: 1.5;
+  transition: background .25s ease, color .25s ease;
 }
 
-#root {
-  min-height: 100vh;
+button { font-family: var(--font); cursor: pointer; }
+
+/* ── Skeleton Animation ── */
+@keyframes skeletonPulse {
+  0%, 100% { opacity: .6; }
+  50% { opacity: .3; }
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 4px; }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #a0a0a0;
-}
+/* ── Selection ── */
+::selection { background: var(--c-accent-subtle); color: var(--c-accent); }

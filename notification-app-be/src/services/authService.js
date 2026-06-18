@@ -71,7 +71,7 @@ export async function getAuthToken() {
     logger.Log(
       "backend",
       "info",
-      "authService",
+      "auth",
       `Successfully obtained auth token, expires at ${new Date(tokenExpiresAt * 1000).toISOString()}`
     );
 
@@ -82,7 +82,7 @@ export async function getAuthToken() {
       logger.Log(
         "backend",
         "error",
-        "authService",
+        "auth",
         `Authentication failed: ${error.message}`
       );
     }

@@ -43,7 +43,7 @@ app.use(async (req, res, next) => {
     logger.Log(
       "backend",
       "info",
-      "httpMiddleware",
+      "middleware",
       `${req.method} ${req.originalUrl} - Request received from ${req.ip}`
     );
   }
@@ -55,7 +55,7 @@ app.use(async (req, res, next) => {
       logger.Log(
         "backend",
         "info",
-        "httpMiddleware",
+        "middleware",
         `${req.method} ${req.originalUrl} - ${res.statusCode} completed in ${duration}ms`
       );
     }
@@ -91,7 +91,7 @@ app.use((err, req, res, next) => {
     logger.Log(
       "backend",
       "error",
-      "errorHandler",
+      "handler",
       `Unhandled error: ${err.message} | Stack: ${err.stack?.split("\n")[0]}`
     );
   }
@@ -140,7 +140,7 @@ async function startServer() {
     logger.Log(
       "backend",
       "info",
-      "server",
+      "config",
       `Notification backend server starting on port ${PORT}`
     );
 
@@ -154,7 +154,7 @@ async function startServer() {
       logger.Log(
         "backend",
         "info",
-        "server",
+        "config",
         `Server successfully started and listening on port ${PORT}`
       );
     });
