@@ -1,3 +1,19 @@
+/**
+ * NotificationsPage
+ *
+ * Main page component that displays a list of notifications
+ * with filtering by type and pagination support.
+ *
+ * Bugs fixed from skeleton:
+ *  1. page state was "1" (string) → changed to 1 (number)
+ *  2. Loading spinner used hardcoded `true` → now uses `loading` variable
+ *  3. Empty state checked `loading` instead of `!loading`
+ *  4. Notification list checked `loading` instead of `!loading`
+ *  5. Notifications rendered empty fragments → now renders NotificationCard
+ *  6. unreadCount was hardcoded to 2 → now computed from hook
+ *  7. handleFilterChange and handlePageChange were empty → now implemented
+ */
+
 import { useState } from "react";
 import {
   Alert,
@@ -16,19 +32,21 @@ import { NotificationFilter } from "../components/NotificationFilter";
 import { useNotifications } from "../hooks/useNotifications";
 
 export function NotificationsPage() {
-  const [filter, setFilter] = useState();
-  const [page, setPage] = useState("1");
+  const [filter, setFilter] = useState("All");
+  const [page, setPage] = useState(1);
 
-  const { notifications, totalPages, loading, error } = useNotifications();
+  const { notifications, totalPages, loading, error, unreadCount } =
+    useNotifications(page, filter);
 
-  const unreadCount = 2;
-
-  const handleFilterChange = (newFilter) => {
-
+  const handleFilterChange = (event, newFilter) => {
+    if (newFilter !== null) {
+      setFilter(newFilter);
+      setPage(1); // Reset to first page when filter changes
+    }
   };
 
   const handlePageChange = (_, newPage) => {
-
+    setPage(newPage);
   };
 
   return (
@@ -48,29 +66,42 @@ export function NotificationsPage() {
         <NotificationFilter value={filter} onChange={handleFilterChange} />
       </Box>
 
-      {true && (
+      {/* Loading state */}
+      {loading && (
         <Box display="flex" justifyContent="center" py={6}>
           <CircularProgress />
         </Box>
       )}
 
+      {/* Error state */}
       {!loading && error && (
-        <Alert severity="error">Failed to load notifications: {error}</Alert>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Failed to load notifications: {error}
+        </Alert>
       )}
 
-      {loading && !error && notifications.length == "0" && (
-        <Alert severity="info">Something message</Alert>
+      {/* Empty state */}
+      {!loading && !error && notifications.length === 0 && (
+        <Alert severity="info">
+          No notifications found
+          {filter !== "All" ? ` for type "${filter}"` : ""}.
+        </Alert>
       )}
 
-      {loading && !error && notifications.length > 0 && (
+      {/* Notifications list */}
+      {!loading && !error && notifications.length > 0 && (
         <Stack spacing={1.5}>
-          {notifications.map((n) => (
-            <></>
+          {notifications.map((n, index) => (
+            <NotificationCard
+              key={n.id || index}
+              notification={n}
+            />
           ))}
         </Stack>
       )}
 
-      {!loading && (
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
         <Box display="flex" justifyContent="center" mt={4}>
           <Pagination
             count={totalPages}
