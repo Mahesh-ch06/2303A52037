@@ -1,19 +1,31 @@
 /**
- * NotificationsPage — Main page layout.
+ * NotificationsPage — Complete notification management center.
  *
- * Header with title, theme toggle, and "mark all read" action.
- * Stats row showing unread count per type.
- * Filters, notification list, and pagination.
+ * Features:
+ *   - Create new notifications
+ *   - Fetch and display paginated list
+ *   - Mark as read / unread (per item)
+ *   - Mark all as read
+ *   - Delete notifications
+ *   - Filter by type (Placement, Result, Event)
+ *   - Search by text
+ *   - Dark/light mode toggle
+ *   - Stats summary
+ *   - Skeleton loading
+ *   - Empty / error states
  */
 import { useState, useMemo } from "react";
 import { NotificationCard } from "../components/NotificationCard";
 import { NotificationFilter } from "../components/NotificationFilter";
 import { ThemeToggle } from "../components/ThemeToggle";
+import { SearchBar } from "../components/SearchBar";
+import { CreateNotificationForm } from "../components/CreateNotificationForm";
 import { useNotifications } from "../hooks/useNotifications";
 
 export function NotificationsPage({ isDark, onToggleTheme }) {
   const [filter, setFilter] = useState("All");
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
 
   const {
     notifications,
@@ -24,71 +36,60 @@ export function NotificationsPage({ isDark, onToggleTheme }) {
     markAllRead,
     toggleRead,
     deleteNotification,
-  } = useNotifications(page, filter);
+    createNotification,
+  } = useNotifications(page, filter, search);
 
-  // Filter change resets page
   const handleFilterChange = (key) => {
     setFilter(key);
     setPage(1);
   };
 
-  // Stats per type
+  const handleSearch = (q) => {
+    setSearch(q);
+    setPage(1);
+  };
+
+  // Stats per type (from current page)
   const stats = useMemo(() => {
-    const counts = { Placement: 0, Result: 0, Event: 0 };
+    const c = { Placement: 0, Result: 0, Event: 0 };
     notifications.forEach((n) => {
-      if (counts[n.Type] !== undefined) counts[n.Type]++;
+      if (c[n.Type] !== undefined) c[n.Type]++;
     });
-    return counts;
+    return c;
   }, [notifications]);
 
   return (
     <div style={{ maxWidth: 640, margin: "0 auto", padding: "32px 16px 64px" }}>
 
       {/* ── Header ── */}
-      <header
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "space-between",
-          marginBottom: 28,
-        }}
-      >
+      <header style={{
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        marginBottom: 24,
+      }}>
         <div>
-          <h1
-            style={{
-              fontSize: 22,
-              fontWeight: 700,
-              letterSpacing: "-.02em",
-              color: "var(--c-text-1)",
-              margin: 0,
-              lineHeight: 1.3,
-            }}
-          >
+          <h1 style={{
+            fontSize: 22, fontWeight: 700,
+            letterSpacing: "-.02em", margin: 0, lineHeight: 1.3,
+            color: "var(--c-text-1)",
+          }}>
             Notifications
           </h1>
-          <p
-            style={{
-              fontSize: 13,
-              color: "var(--c-text-3)",
-              marginTop: 2,
-            }}
-          >
+          <p style={{ fontSize: 13, color: "var(--c-text-3)", marginTop: 2 }}>
             {unreadCount > 0
               ? `${unreadCount} unread notification${unreadCount !== 1 ? "s" : ""}`
               : "You're all caught up"}
           </p>
         </div>
-
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {unreadCount > 0 && (
             <button
               id="mark-all-read-btn"
               onClick={markAllRead}
               style={{
-                padding: "6px 12px",
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: 500,
+                padding: "6px 12px", borderRadius: 6,
+                fontSize: 12, fontWeight: 500,
                 border: "1px solid var(--c-border)",
                 background: "var(--c-surface)",
                 color: "var(--c-text-2)",
@@ -111,54 +112,39 @@ export function NotificationsPage({ isDark, onToggleTheme }) {
         </div>
       </header>
 
+      {/* ── Create Notification ── */}
+      <div style={{ marginBottom: 16 }}>
+        <CreateNotificationForm onCreate={createNotification} />
+      </div>
+
       {/* ── Stats Row ── */}
       {!loading && !error && notifications.length > 0 && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 8,
-            marginBottom: 20,
-          }}
-        >
-          <StatCard
-            label="Placements"
-            count={stats.Placement}
-            color="var(--c-placement)"
-            bg="var(--c-placement-bg)"
-          />
-          <StatCard
-            label="Results"
-            count={stats.Result}
-            color="var(--c-result)"
-            bg="var(--c-result-bg)"
-          />
-          <StatCard
-            label="Events"
-            count={stats.Event}
-            color="var(--c-event)"
-            bg="var(--c-event-bg)"
-          />
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: 8, marginBottom: 16,
+        }}>
+          <StatCard label="Placements" count={stats.Placement}
+            color="var(--c-placement)" bg="var(--c-placement-bg)" />
+          <StatCard label="Results" count={stats.Result}
+            color="var(--c-result)" bg="var(--c-result-bg)" />
+          <StatCard label="Events" count={stats.Event}
+            color="var(--c-event)" bg="var(--c-event-bg)" />
         </div>
       )}
 
-      {/* ── Filters ── */}
-      <div style={{ marginBottom: 16 }}>
+      {/* ── Search + Filters ── */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+        <SearchBar value={search} onChange={handleSearch} />
         <NotificationFilter value={filter} onChange={handleFilterChange} />
       </div>
 
       {/* ── Separator ── */}
-      <div
-        style={{
-          height: 1,
-          background: "var(--c-border)",
-          marginBottom: 16,
-        }}
-      />
+      <div style={{ height: 1, background: "var(--c-border)", marginBottom: 16 }} />
 
       {/* ── Loading ── */}
       {loading && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {Array.from({ length: 6 }).map((_, i) => (
             <SkeletonCard key={i} delay={i * 60} />
           ))}
@@ -167,43 +153,33 @@ export function NotificationsPage({ isDark, onToggleTheme }) {
 
       {/* ── Error ── */}
       {!loading && error && (
-        <div
-          style={{
-            padding: "14px 16px",
-            borderRadius: "var(--radius)",
-            border: "1px solid var(--c-danger)",
-            background: "var(--c-danger-bg)",
-            color: "var(--c-danger)",
-            fontSize: 13,
-            fontWeight: 500,
-          }}
-        >
+        <div style={{
+          padding: "14px 16px", borderRadius: 8,
+          border: "1px solid var(--c-danger)",
+          background: "var(--c-danger-bg)",
+          color: "var(--c-danger)",
+          fontSize: 13, fontWeight: 500,
+        }}>
           Failed to load notifications — {error}
         </div>
       )}
 
-      {/* ── Empty state ── */}
+      {/* ── Empty ── */}
       {!loading && !error && notifications.length === 0 && (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "48px 16px",
-            color: "var(--c-text-3)",
-          }}
-        >
+        <div style={{ textAlign: "center", padding: "48px 16px", color: "var(--c-text-3)" }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>📭</div>
           <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 4, color: "var(--c-text-2)" }}>
             No notifications
           </p>
           <p style={{ fontSize: 13 }}>
-            {filter !== "All"
-              ? `Nothing in "${filter}" — try a different filter.`
-              : "Check back later for updates."}
+            {search ? `No results for "${search}".` :
+             filter !== "All" ? `Nothing in "${filter}" — try a different filter.` :
+             "Check back later for updates."}
           </p>
         </div>
       )}
 
-      {/* ── Notification List ── */}
+      {/* ── List ── */}
       {!loading && !error && notifications.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {notifications.map((n) => (
@@ -219,101 +195,62 @@ export function NotificationsPage({ isDark, onToggleTheme }) {
 
       {/* ── Pagination ── */}
       {!loading && totalPages > 1 && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 4,
-            marginTop: 24,
-          }}
-        >
-          <PaginationBtn
-            disabled={page === 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
+        <div style={{
+          display: "flex", alignItems: "center",
+          justifyContent: "center", gap: 4, marginTop: 24,
+        }}>
+          <PagBtn disabled={page === 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}>
             ← Prev
-          </PaginationBtn>
-
+          </PagBtn>
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <PaginationBtn
-              key={p}
-              active={p === page}
-              onClick={() => setPage(p)}
-            >
+            <PagBtn key={p} active={p === page} onClick={() => setPage(p)}>
               {p}
-            </PaginationBtn>
+            </PagBtn>
           ))}
-
-          <PaginationBtn
-            disabled={page === totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
+          <PagBtn disabled={page === totalPages}
+            onClick={() => setPage((p) => p + 1)}>
             Next →
-          </PaginationBtn>
+          </PagBtn>
         </div>
       )}
     </div>
   );
 }
 
-/* ── Stat Card ── */
+/* ── Sub-components ── */
+
 function StatCard({ label, count, color, bg }) {
   return (
-    <div
-      style={{
-        padding: "10px 12px",
-        borderRadius: "var(--radius)",
-        border: "1px solid var(--c-border)",
-        background: "var(--c-surface)",
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        transition: "box-shadow .15s ease",
-      }}
-    >
-      <span
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: 8,
-          background: bg,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 15,
-          fontWeight: 700,
-          color: color,
-          flexShrink: 0,
-        }}
-      >
+    <div style={{
+      padding: "10px 12px", borderRadius: 8,
+      border: "1px solid var(--c-border)",
+      background: "var(--c-surface)",
+      display: "flex", alignItems: "center", gap: 10,
+    }}>
+      <span style={{
+        width: 32, height: 32, borderRadius: 8,
+        background: bg, display: "flex",
+        alignItems: "center", justifyContent: "center",
+        fontSize: 15, fontWeight: 700, color, flexShrink: 0,
+      }}>
         {count}
       </span>
-      <span
-        style={{
-          fontSize: 12,
-          fontWeight: 500,
-          color: "var(--c-text-2)",
-          lineHeight: 1.3,
-        }}
-      >
+      <span style={{ fontSize: 12, fontWeight: 500, color: "var(--c-text-2)" }}>
         {label}
       </span>
     </div>
   );
 }
 
-/* ── Pagination Button ── */
-function PaginationBtn({ children, active, disabled, onClick }) {
+function PagBtn({ children, active, disabled, onClick }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
       style={{
-        padding: "6px 12px",
-        borderRadius: 6,
-        fontSize: 13,
-        fontWeight: 500,
+        padding: "6px 12px", borderRadius: 6,
+        fontSize: 13, fontWeight: 500,
         border: active ? "1px solid var(--c-accent)" : "1px solid var(--c-border)",
         background: active ? "var(--c-accent-subtle)" : "var(--c-surface)",
         color: active ? "var(--c-accent)" : disabled ? "var(--c-text-3)" : "var(--c-text-2)",
@@ -328,18 +265,14 @@ function PaginationBtn({ children, active, disabled, onClick }) {
   );
 }
 
-/* ── Skeleton Loading Card ── */
 function SkeletonCard({ delay = 0 }) {
   return (
-    <div
-      style={{
-        height: 56,
-        borderRadius: "var(--radius)",
-        background: "var(--c-surface-sunken)",
-        border: "1px solid var(--c-border-subtle)",
-        animation: `skeletonPulse 1.6s ease-in-out infinite`,
-        animationDelay: `${delay}ms`,
-      }}
-    />
+    <div style={{
+      height: 56, borderRadius: 8,
+      background: "var(--c-surface-sunken)",
+      border: "1px solid var(--c-border-subtle)",
+      animation: "skeletonPulse 1.6s ease-in-out infinite",
+      animationDelay: `${delay}ms`,
+    }} />
   );
 }

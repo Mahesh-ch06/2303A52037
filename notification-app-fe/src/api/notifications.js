@@ -1,39 +1,59 @@
 /**
- * Notifications API
+ * Notifications API — Full CRUD + Search
  *
- * Handles communication with the backend server
- * to fetch notification data with pagination and filtering.
+ * All operations go through the backend proxy at localhost:5000.
+ * Backend handles auth tokens, logging, and in-memory state.
  */
 
-const API_BASE_URL = "http://localhost:5000/api";
+const API = "http://localhost:5000/api/notifications";
 
-/**
- * Fetches notifications from the backend API.
- *
- * @param {number} page - Page number for pagination (default: 1)
- * @param {string} type - Notification type filter ('All', 'Placement', 'Result', 'Event')
- * @returns {Promise<Object>} Response containing notifications array and pagination info
- */
-export async function fetchNotifications(page = 1, type = "All") {
-  try {
-    const params = new URLSearchParams();
-    params.set("page", String(page));
-    if (type && type !== "All") {
-      params.set("type", type);
-    }
+/** Fetch paginated notifications with optional type filter and search. */
+export async function fetchNotifications(page = 1, type = "All", search = "") {
+  const params = new URLSearchParams();
+  params.set("page", String(page));
+  if (type && type !== "All") params.set("type", type);
+  if (search.trim()) params.set("search", search.trim());
 
-    const response = await fetch(
-      `${API_BASE_URL}/notifications?${params.toString()}`
-    );
+  const res = await fetch(`${API}?${params}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}: Failed to fetch`);
+  return res.json();
+}
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: Failed to fetch notifications`);
-    }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("[NotificationsAPI] Fetch error:", error.message);
-    throw error;
+/** Create a new notification. */
+export async function createNotification(type, message) {
+  const res = await fetch(API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type, message }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${res.status}`);
   }
+  return res.json();
+}
+
+/** Toggle read/unread status for a single notification. */
+export async function toggleReadStatus(id) {
+  const res = await fetch(`${API}/${id}/read`, { method: "PATCH" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+/** Mark multiple notifications as read. */
+export async function markAllAsRead(ids) {
+  const res = await fetch(`${API}/read-all`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+/** Delete a notification by ID. */
+export async function deleteNotification(id) {
+  const res = await fetch(`${API}/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }

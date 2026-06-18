@@ -1,111 +1,93 @@
 /**
- * useNotifications — Data fetching + local state management.
+ * useNotifications — Server-driven state management.
  *
- * Manages: pagination, type filter, read/unread status (client-side),
- * and delete (client-side). Read state persists in localStorage.
+ * All mutations (read, delete, create) go through backend API,
+ * which handles logging middleware for every action.
+ * After each mutation, data is refetched for consistency.
  */
 import { useState, useEffect, useCallback } from "react";
-import { fetchNotifications } from "../api/notifications";
+import {
+  fetchNotifications,
+  createNotification as apiCreate,
+  toggleReadStatus as apiToggleRead,
+  markAllAsRead as apiMarkAllRead,
+  deleteNotification as apiDelete,
+} from "../api/notifications";
 
-const READ_KEY = "notification-app-read-ids";
-const DELETED_KEY = "notification-app-deleted-ids";
 const PAGE_SIZE = 20;
 
-function loadSet(key) {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(key) || "[]"));
-  } catch {
-    return new Set();
-  }
-}
-
-function saveSet(key, set) {
-  localStorage.setItem(key, JSON.stringify([...set]));
-}
-
-export function useNotifications(page = 1, filter = "All") {
-  const [raw, setRaw] = useState([]);
+export function useNotifications(page = 1, filter = "All", search = "") {
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hasMore, setHasMore] = useState(true);
-  const [readIds, setReadIds] = useState(() => loadSet(READ_KEY));
-  const [deletedIds, setDeletedIds] = useState(() => loadSet(DELETED_KEY));
 
-  // Fetch from API
+  // Fetch
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchNotifications(page, filter);
+      const data = await fetchNotifications(page, filter, search);
       const items = data.notifications ?? [];
-      setRaw(items);
+      setNotifications(items);
       setHasMore(items.length >= PAGE_SIZE);
     } catch (err) {
       setError(err.message || "Something went wrong");
-      setRaw([]);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
-  }, [page, filter]);
+  }, [page, filter, search]);
 
   useEffect(() => { load(); }, [load]);
-
-  // Derived: filter out deleted, enrich with read status
-  const notifications = raw
-    .filter((n) => !deletedIds.has(n.ID))
-    .map((n) => ({
-      ...n,
-      isRead: readIds.has(n.ID),
-    }));
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
   const totalPages = hasMore ? page + 1 : page;
 
-  // Actions
-  const markRead = useCallback((id) => {
-    setReadIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      saveSet(READ_KEY, next);
-      return next;
-    });
-  }, []);
+  // Toggle read/unread — update locally then sync with server
+  const toggleRead = useCallback(async (id) => {
+    // Optimistic update
+    setNotifications((prev) =>
+      prev.map((n) => n.ID === id ? { ...n, isRead: !n.isRead } : n)
+    );
+    try {
+      await apiToggleRead(id);
+    } catch {
+      load(); // Rollback on error
+    }
+  }, [load]);
 
-  const markUnread = useCallback((id) => {
-    setReadIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      saveSet(READ_KEY, next);
-      return next;
-    });
-  }, []);
+  // Mark all read
+  const markAllRead = useCallback(async () => {
+    const ids = notifications.filter((n) => !n.isRead).map((n) => n.ID);
+    if (ids.length === 0) return;
 
-  const toggleRead = useCallback((id) => {
-    setReadIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      saveSet(READ_KEY, next);
-      return next;
-    });
-  }, []);
+    // Optimistic
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    try {
+      await apiMarkAllRead(ids);
+    } catch {
+      load();
+    }
+  }, [notifications, load]);
 
-  const markAllRead = useCallback(() => {
-    setReadIds((prev) => {
-      const next = new Set(prev);
-      notifications.forEach((n) => next.add(n.ID));
-      saveSet(READ_KEY, next);
-      return next;
-    });
-  }, [notifications]);
+  // Delete
+  const deleteNotification = useCallback(async (id) => {
+    // Optimistic
+    setNotifications((prev) => prev.filter((n) => n.ID !== id));
+    try {
+      await apiDelete(id);
+    } catch {
+      load();
+    }
+  }, [load]);
 
-  const deleteNotification = useCallback((id) => {
-    setDeletedIds((prev) => {
-      const next = new Set(prev);
-      next.add(id);
-      saveSet(DELETED_KEY, next);
-      return next;
-    });
+  // Create
+  const createNotification = useCallback(async (type, message) => {
+    const created = await apiCreate(type, message);
+    // Prepend to list
+    setNotifications((prev) => [created, ...prev]);
+    return created;
   }, []);
 
   return {
@@ -115,11 +97,10 @@ export function useNotifications(page = 1, filter = "All") {
     totalPages,
     hasMore,
     unreadCount,
-    markRead,
-    markUnread,
     toggleRead,
     markAllRead,
     deleteNotification,
+    createNotification,
     refetch: load,
   };
 }
